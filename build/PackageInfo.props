@@ -6,7 +6,6 @@
 		<PackageProjectUrl>https://github.com/cirreum/$(MSBuildProjectName)</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/cirreum/$(MSBuildProjectName)</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
-		<PackageTags>cirreum;dotnet;blazor</PackageTags>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 	</PropertyGroup>
 
