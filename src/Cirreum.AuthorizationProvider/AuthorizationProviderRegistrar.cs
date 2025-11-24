@@ -132,7 +132,7 @@ public abstract class AuthorizationProviderRegistrar<TSettings, TInstanceSetting
 		this.ValidateSettings(settings);
 
 		// Add the ServiceProvider...
-		if (AuthorizationSchemeRegistry.IsApplication) {
+		if (ProviderContext.GetRuntimeType() == ProviderRuntimeType.WebApp) {
 			this.AddAuthorizationForWebApp(instanceSection, settings, authBuilder);
 		} else {
 			this.AddAuthorizationForWebApi(instanceSection, settings, authBuilder);

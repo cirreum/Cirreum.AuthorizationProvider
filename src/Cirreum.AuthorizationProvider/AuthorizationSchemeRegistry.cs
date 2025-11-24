@@ -9,13 +9,6 @@ public sealed class AuthorizationSchemeRegistry {
 	private readonly Dictionary<string, string> _audienceSchemeMap = [];
 
 	/// <summary>
-	/// Gets or sets a value indicating whether this registry is configured for an application context.
-	/// <see langword="true"/> if this is for an Application. Otherwise
-	/// defaults to <see langword="false"/> for API only.
-	/// </summary>
-	public static bool IsApplication { get; set; }
-
-	/// <summary>
 	/// Registers an authentication scheme for a specific JWT audience claim.
 	/// </summary>
 	/// <param name="audience">The audience claim value to associate with the scheme.</param>
