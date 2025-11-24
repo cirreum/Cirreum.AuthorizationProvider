@@ -20,7 +20,7 @@ public abstract class AuthorizationProviderRegistrar<TSettings, TInstanceSetting
 	private static readonly Dictionary<string, string> processedInstances = [];
 
 	/// <inheritdoc/>
-	public abstract ProviderType ProviderType { get; }
+	public ProviderType ProviderType => ProviderType.Authorization;
 
 	/// <inheritdoc/>
 	public abstract string ProviderName { get; }
