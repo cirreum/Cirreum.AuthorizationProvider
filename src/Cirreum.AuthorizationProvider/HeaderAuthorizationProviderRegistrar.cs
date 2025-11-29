@@ -15,12 +15,13 @@ public abstract class HeaderAuthorizationProviderRegistrar<TSettings, TInstanceS
 	: AuthorizationProviderRegistrar<TSettings, TInstanceSettings>
 	where TInstanceSettings : HeaderAuthorizationProviderInstanceSettings
 	where TSettings : AuthorizationProviderSettings<TInstanceSettings> {
+
 	/// <inheritdoc/>
 	protected override void RegisterScheme(
 		string key,
 		TInstanceSettings settings,
 		IServiceCollection services,
-		IConfigurationSection instanceSection,
+		IConfiguration configuration,
 		AuthenticationBuilder authBuilder) {
 
 		// Validate required header-based provider properties
@@ -34,17 +35,31 @@ public abstract class HeaderAuthorizationProviderRegistrar<TSettings, TInstanceS
 				$"Header-based provider instance '{key}' requires a ClientId.");
 		}
 
+		// Resolve the instance section
+		var instanceSection = configuration.GetSection(this.GetInstanceSectionPath(key));
+
+		// Resolve API key: direct value first, then ConnectionStrings:{instanceKey}
+		var apiKey = instanceSection.GetValue<string>("Key");
+		if (string.IsNullOrWhiteSpace(apiKey)) {
+			apiKey = configuration.GetConnectionString(key);
+		}
+
+		if (string.IsNullOrWhiteSpace(apiKey)) {
+			throw new InvalidOperationException(
+				$"Missing required Key for header-based provider instance '{key}'. " +
+				$"Provide either Key in instance configuration or ConnectionStrings:{key}.");
+		}
+
+		// Validate key isn't already registered to another client
+		ApiKeyValidation.ValidateApiKeyUniqueness(apiKey, key, settings.ClientId);
+
+		// Default ClientName to ClientId if not specified
 		var clientName = string.IsNullOrWhiteSpace(settings.ClientName)
 			? settings.ClientId
 			: settings.ClientName;
 
 		// Get the client registry and register this client
 		var clientRegistry = services.GetApiKeyClientRegistry();
-
-		// Get the key from configuration (should come from Key Vault in production)
-		var apiKey = instanceSection.GetValue<string>("Key")
-			?? throw new InvalidOperationException(
-				$"Header-based provider instance '{key}' requires a Key in configuration.");
 
 		// Register the client entry
 		clientRegistry.Register(new ApiKeyClientEntry(

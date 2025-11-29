@@ -6,8 +6,7 @@ namespace Cirreum.AuthorizationProvider;
 /// Provides a centralized registry for resolving which authentication scheme should be used
 /// for validating tokens with specific audience claims or requests with specific headers.
 /// </summary>
-public sealed class AuthorizationSchemeRegistry
-{
+public sealed class AuthorizationSchemeRegistry {
 	private readonly Dictionary<string, string> _audienceSchemeMap = [];
 	private readonly Dictionary<string, string> _headerSchemeMap = new(StringComparer.OrdinalIgnoreCase);
 
@@ -17,8 +16,7 @@ public sealed class AuthorizationSchemeRegistry
 	/// </summary>
 	/// <param name="audience">The audience claim value to associate with the scheme.</param>
 	/// <param name="scheme">The authentication scheme name to use for this audience.</param>
-	public void RegisterAudienceScheme(string audience, string scheme)
-	{
+	public void RegisterAudienceScheme(string audience, string scheme) {
 		_audienceSchemeMap[audience] = scheme;
 	}
 
@@ -28,8 +26,7 @@ public sealed class AuthorizationSchemeRegistry
 	/// </summary>
 	/// <param name="headerName">The HTTP header name to associate with the scheme.</param>
 	/// <param name="scheme">The authentication scheme name to use when this header is present.</param>
-	public void RegisterHeaderScheme(string headerName, string scheme)
-	{
+	public void RegisterHeaderScheme(string headerName, string scheme) {
 		_headerSchemeMap[headerName] = scheme;
 	}
 
@@ -40,8 +37,7 @@ public sealed class AuthorizationSchemeRegistry
 	/// <returns>
 	/// The authentication scheme name if a mapping exists; otherwise, <see langword="null"/>.
 	/// </returns>
-	public string? GetSchemeForAudience(string audience)
-	{
+	public string? GetSchemeForAudience(string audience) {
 		return _audienceSchemeMap.TryGetValue(audience, out var scheme) ? scheme : null;
 	}
 
@@ -52,8 +48,7 @@ public sealed class AuthorizationSchemeRegistry
 	/// <returns>
 	/// The authentication scheme name if a mapping exists; otherwise, <see langword="null"/>.
 	/// </returns>
-	public string? GetSchemeForHeader(string headerName)
-	{
+	public string? GetSchemeForHeader(string headerName) {
 		return _headerSchemeMap.TryGetValue(headerName, out var scheme) ? scheme : null;
 	}
 

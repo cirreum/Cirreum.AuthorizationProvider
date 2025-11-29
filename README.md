@@ -45,6 +45,63 @@ Flexible configuration models that support provider-specific settings while main
 - **Enabled/disabled instances** - Granular control over which provider instances are active
 - **Configuration binding** - Seamless integration with ASP.NET Core configuration system
 
+#### Secure Key Storage
+
+API keys can be provided in three ways (checked in order):
+
+1. **Direct value** - `Key` property in instance configuration (dev/testing only)
+2. **Connection string** - `ConnectionStrings:{InstanceName}` in configuration (production)
+
+For production environments, store API keys in Azure Key Vault using the connection string pattern:
+```json
+{
+  "ConnectionStrings": {
+    "LapCastBroker": "@Microsoft.KeyVault(SecretUri=https://your-vault.vault.azure.net/secrets/LapCastBrokerKey)"
+  },
+  "Cirreum": {
+    "Authorization": {
+      "Providers": {
+        "ApiKey": {
+          "Instances": {
+            "LapCastBroker": {
+              "Enabled": true,
+              "HeaderName": "X-Api-Key",
+              "ClientId": "lapcast-broker",
+              "ClientName": "LapCast Broker",
+              "Roles": ["App.System"]
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+The instance name (`LapCastBroker`) is used as the connection string key, allowing both the API and client applications to resolve the same secret from Key Vault using `configuration.GetConnectionString("LapCastBroker")`.
+
+For local development, use user secrets:
+```json
+{
+  "Cirreum": {
+    "Authorization": {
+      "Providers": {
+        "ApiKey": {
+          "Instances": {
+            "LapCastBroker": {
+              "Enabled": true,
+              "HeaderName": "X-Api-Key",
+              "ClientId": "lapcast-broker",
+              "Key": "dev-only-key"
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
 ### Provider Types
 
 | Provider Type | Base Class | Routing Mechanism | Use Case |
