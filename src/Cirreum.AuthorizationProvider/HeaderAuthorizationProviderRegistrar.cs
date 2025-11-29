@@ -14,19 +14,33 @@ using Microsoft.Extensions.DependencyInjection;
 public abstract class HeaderAuthorizationProviderRegistrar<TSettings, TInstanceSettings>
 	: AuthorizationProviderRegistrar<TSettings, TInstanceSettings>
 	where TInstanceSettings : HeaderAuthorizationProviderInstanceSettings
-	where TSettings : AuthorizationProviderSettings<TInstanceSettings>
-{
+	where TSettings : AuthorizationProviderSettings<TInstanceSettings> {
 	/// <inheritdoc/>
 	protected override void RegisterScheme(
 		string key,
 		TInstanceSettings settings,
 		IServiceCollection services,
 		IConfigurationSection instanceSection,
-		AuthenticationBuilder authBuilder)
-	{
+		AuthenticationBuilder authBuilder) {
+
+		// Validate required header-based provider properties
+		if (string.IsNullOrWhiteSpace(settings.HeaderName)) {
+			throw new InvalidOperationException(
+				$"Header-based provider instance '{key}' requires a HeaderName.");
+		}
+
+		if (string.IsNullOrWhiteSpace(settings.ClientId)) {
+			throw new InvalidOperationException(
+				$"Header-based provider instance '{key}' requires a ClientId.");
+		}
+
+		var clientName = string.IsNullOrWhiteSpace(settings.ClientName)
+			? settings.ClientId
+			: settings.ClientName;
+
 		// Get the client registry and register this client
 		var clientRegistry = services.GetApiKeyClientRegistry();
-		
+
 		// Get the key from configuration (should come from Key Vault in production)
 		var apiKey = instanceSection.GetValue<string>("Key")
 			?? throw new InvalidOperationException(
@@ -38,15 +52,14 @@ public abstract class HeaderAuthorizationProviderRegistrar<TSettings, TInstanceS
 			settings.HeaderName,
 			apiKey,
 			settings.ClientId,
-			settings.ClientName,
+			clientName,
 			settings.Roles));
 
 		// Register the authentication scheme only once per unique header name
 		var schemeRegistry = services.GetAuthorizationSchemeRegistry();
 		var schemeName = $"Header:{settings.HeaderName}";
 
-		if (schemeRegistry.GetSchemeForHeader(settings.HeaderName) is null)
-		{
+		if (schemeRegistry.GetSchemeForHeader(settings.HeaderName) is null) {
 			// Add the authentication handler via derived class
 			this.AddAuthenticationHandler(schemeName, settings, authBuilder);
 

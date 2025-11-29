@@ -15,6 +15,7 @@ public abstract class AudienceAuthorizationProviderRegistrar<TSettings, TInstanc
 	: AuthorizationProviderRegistrar<TSettings, TInstanceSettings>
 	where TInstanceSettings : AudienceAuthorizationProviderInstanceSettings
 	where TSettings : AuthorizationProviderSettings<TInstanceSettings> {
+
 	/// <inheritdoc/>
 	protected override void RegisterScheme(
 		string key,
@@ -22,6 +23,13 @@ public abstract class AudienceAuthorizationProviderRegistrar<TSettings, TInstanc
 		IServiceCollection services,
 		IConfigurationSection instanceSection,
 		AuthenticationBuilder authBuilder) {
+
+		// Validate audience is present
+		if (string.IsNullOrWhiteSpace(settings.Audience)) {
+			throw new InvalidOperationException(
+				$"Audience-based provider instance '{key}' requires an Audience.");
+		}
+
 		// Add the authentication scheme via derived class
 		if (ProviderContext.GetRuntimeType() == ProviderRuntimeType.WebApp) {
 			this.AddAuthorizationForWebApp(instanceSection, settings, authBuilder);
@@ -55,4 +63,5 @@ public abstract class AudienceAuthorizationProviderRegistrar<TSettings, TInstanc
 		IConfigurationSection instanceSection,
 		TInstanceSettings providerSettings,
 		AuthenticationBuilder authBuilder);
+
 }
