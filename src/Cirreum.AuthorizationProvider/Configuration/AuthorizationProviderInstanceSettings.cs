@@ -1,15 +1,15 @@
-﻿namespace Cirreum.AuthorizationProvider.Configuration;
+namespace Cirreum.AuthorizationProvider.Configuration;
 
 using Cirreum.Providers.Configuration;
 using Microsoft.Extensions.Configuration;
 
 /// <summary>
 /// Abstract base class for authorization provider instance settings that defines
-/// common configuration properties for authorization provider instances.
+/// common configuration properties for all authorization provider instances.
 /// </summary>
 public abstract class AuthorizationProviderInstanceSettings
-	: IProviderInstanceSettings {
-
+	: IProviderInstanceSettings
+{
 	/// <summary>
 	/// Gets or sets the authentication scheme name for this provider instance.
 	/// This value is typically set during registration and maps to an ASP.NET Core authentication scheme.
@@ -23,16 +23,9 @@ public abstract class AuthorizationProviderInstanceSettings
 	public bool Enabled { get; set; }
 
 	/// <summary>
-	/// Gets or sets the JWT audience claim value for this provider instance.
-	/// This value is used to map incoming JWT tokens to the appropriate authentication scheme.
-	/// </summary>
-	public string Audience { get; set; } = "";
-
-	/// <summary>
 	/// Gets or sets the raw <see cref="IConfigurationSection"/> used to
 	/// pass provider-specific configuration to the authorization builder.
 	/// This section contains the detailed configuration for this instance.
 	/// </summary>
 	public IConfigurationSection? Section { get; set; }
-
 }

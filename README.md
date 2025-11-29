@@ -15,19 +15,28 @@
 ### Key Features
 
 #### 🔐 Provider Registration Pattern
-A standardized approach to implementing authorization providers through the `AuthorizationProviderRegistrar<TSettings, TInstanceSettings>` abstract base class:
+A bifurcated approach to implementing authorization providers based on their routing mechanism:
 
+- **Audience-based providers** - For OAuth/OIDC providers (Entra, Okta, Ping) that route by JWT audience claim, with separate Web API and Web App registration paths
+- **Header-based providers** - For API key and similar providers that route by HTTP header presence
 - **Multi-instance support** - Configure multiple instances of the same provider type with different settings
 - **Duplicate detection** - Automatic prevention of duplicate registrations
 - **Validation framework** - Provider-specific settings validation before registration
-- **Web API/Web App differentiation** - Separate registration paths for different application types
 
 #### 🎯 Scheme Registry System
-Centralized management of JWT audience-to-authentication scheme mappings through `AuthorizationSchemeRegistry`:
+Centralized management of authentication scheme mappings through `AuthorizationSchemeRegistry`:
 
-- **Audience-based routing** - Map JWT audience claims to specific authentication schemes
+- **Audience-based routing** - Map JWT audience claims to specific authentication schemes for OAuth/OIDC providers
+- **Header-based routing** - Map HTTP headers to authentication schemes for API key and similar providers
 - **Multi-tenant support** - Handle multiple authorization contexts within a single application
-- **Dynamic scheme resolution** - Runtime lookup of appropriate schemes for incoming tokens
+- **Dynamic scheme resolution** - Runtime lookup of appropriate schemes for incoming requests
+
+#### 🔑 API Key Client Registry
+Secure management of API key clients through `ApiKeyClientRegistry`:
+
+- **Multi-client support** - Multiple clients can share the same header with different keys
+- **Secure validation** - Constant-time comparison to prevent timing attacks
+- **Role assignment** - Configure roles per client for fine-grained authorization
 
 #### ⚙️ Configuration Abstractions
 Flexible configuration models that support provider-specific settings while maintaining consistency:
@@ -36,87 +45,115 @@ Flexible configuration models that support provider-specific settings while main
 - **Enabled/disabled instances** - Granular control over which provider instances are active
 - **Configuration binding** - Seamless integration with ASP.NET Core configuration system
 
-### Usage Example
+### Provider Types
 
+| Provider Type | Base Class | Routing Mechanism | Use Case |
+|---------------|------------|-------------------|----------|
+| OAuth/OIDC | `AudienceAuthorizationProviderRegistrar` | JWT audience claim | User authentication, interactive flows |
+| API Key | `HeaderAuthorizationProviderRegistrar` | HTTP header + key validation | Service-to-service, broker applications |
+
+### Architecture
+
+The library follows a layered architecture designed for extensibility:
+```text
+AuthorizationProviderRegistrar<TSettings, TInstanceSettings> (Base)
+├── Provider Type Identification
+├── Instance Management & Validation
+└── Abstract RegisterScheme()
+    │
+    ├── AudienceAuthorizationProviderRegistrar<TSettings, TInstanceSettings>
+    │   ├── Registers via AuthorizationSchemeRegistry.RegisterAudienceScheme()
+    │   ├── Abstract AddAuthorizationForWebApi()
+    │   └── Abstract AddAuthorizationForWebApp()
+    │
+    └── HeaderAuthorizationProviderRegistrar<TSettings, TInstanceSettings>
+        ├── Registers via AuthorizationSchemeRegistry.RegisterHeaderScheme()
+        ├── Registers clients via ApiKeyClientRegistry
+        └── Abstract AddAuthenticationHandler()
+
+AuthorizationProviderInstanceSettings (Base)
+├── Scheme, Enabled, Section
+│
+├── AudienceAuthorizationProviderInstanceSettings
+│   └── Audience
+│
+└── HeaderAuthorizationProviderInstanceSettings
+    └── HeaderName, ClientId, ClientName, Roles
+```
+
+### Installation
+```bash
+dotnet add package Cirreum.AuthorizationProvider
+```
+
+### Usage
+
+Provider implementations (Entra, API Key, etc.) live in separate Infrastructure packages. This package provides the abstractions they build upon.
+
+#### Audience-Based Provider (OAuth/OIDC)
+
+For providers that authenticate via JWT tokens with audience claims:
 ```csharp
-// Implement a custom authorization provider
-public class MyAuthProvider : AuthorizationProviderRegistrar<MyProviderSettings, MyInstanceSettings>
+public class MyOAuthInstanceSettings : AudienceAuthorizationProviderInstanceSettings
 {
-    public override ProviderType ProviderType => ProviderType.Authorization;
-    public override string ProviderName => "MyProvider";
+    public string TenantId { get; set; } = "";
+    public string ClientId { get; set; } = "";
+}
+
+public class MyOAuthProvider 
+    : AudienceAuthorizationProviderRegistrar<MyOAuthSettings, MyOAuthInstanceSettings>
+{
+    public override string ProviderName => "MyOAuth";
 
     public override void AddAuthorizationForWebApi(
         IConfigurationSection instanceSection,
-        MyInstanceSettings settings,
+        MyOAuthInstanceSettings settings,
         AuthenticationBuilder authBuilder)
     {
         authBuilder.AddJwtBearer(settings.Scheme, options =>
         {
-            // Configure JWT validation for this scheme
             instanceSection.Bind(options);
         });
     }
 
     public override void AddAuthorizationForWebApp(
         IConfigurationSection instanceSection,
-        MyInstanceSettings settings,
+        MyOAuthInstanceSettings settings,
         AuthenticationBuilder authBuilder)
     {
         authBuilder.AddOpenIdConnect(settings.Scheme, options =>
         {
-            // Configure OIDC for this scheme
             instanceSection.Bind(options);
         });
     }
 }
-
-// Register the provider
-var providerSettings = configuration.GetSection("MyProvider").Get<MyProviderSettings>();
-var myProvider = new MyAuthProvider();
-myProvider.Register(services, providerSettings, configuration.GetSection("MyProvider"), authBuilder);
 ```
 
-### Architecture
+#### Header-Based Provider (API Key)
 
-The library follows a layered architecture:
-
-```text
-AuthorizationProviderRegistrar (Base Class)
-├── Provider Type Identification
-├── Instance Management & Validation
-├── Scheme Registry Integration
-└── Web API/App Registration Hooks
-
-AuthorizationSchemeRegistry (Singleton Service)
-├── Audience → Scheme Mapping
-├── Multi-tenant Resolution
-└── Runtime Scheme Lookup
-
-Configuration Models
-├── Provider Settings (Multiple Instances)
-└── Instance Settings (Individual Configuration)
-```
-
-### Installation
-
-```bash
-dotnet add package Cirreum.AuthorizationProvider
-```
-
-### Basic Setup
-
+For providers that authenticate via HTTP headers:
 ```csharp
-// In Program.cs or Startup.cs
-var authBuilder = services.AddAuthentication();
+public class MyApiKeyInstanceSettings : HeaderAuthorizationProviderInstanceSettings
+{
+    // Inherits: HeaderName, ClientId, ClientName, Roles
+    // Add any additional properties here
+}
 
-// Get the scheme registry for audience mapping
-var registry = services.GetAuthorizationSchemeRegistry();
+public class MyApiKeyProvider 
+    : HeaderAuthorizationProviderRegistrar<MyApiKeySettings, MyApiKeyInstanceSettings>
+{
+    public override string ProviderName => "MyApiKey";
 
-// Configure for web application context
-AuthorizationSchemeRegistry.IsApplication = true; // or false for Web API
-
-// Register your authorization providers
-// (Implementation depends on specific provider)
+    protected override void AddAuthenticationHandler(
+        string schemeName,
+        MyApiKeyInstanceSettings settings,
+        AuthenticationBuilder authBuilder)
+    {
+        authBuilder.AddScheme<MyApiKeyOptions, MyApiKeyHandler>(
+            schemeName,
+            options => options.HeaderName = settings.HeaderName);
+    }
+}
 ```
 
 ## Contribution Guidelines
