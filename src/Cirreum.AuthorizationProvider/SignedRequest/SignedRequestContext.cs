@@ -4,77 +4,67 @@ namespace Cirreum.AuthorizationProvider.SignedRequest;
 /// Provides context for signed request validation, including all data needed
 /// to verify the request signature.
 /// </summary>
-public sealed class SignedRequestContext {
-
-	/// <summary>
-	/// Initializes a new instance of the <see cref="SignedRequestContext"/> class.
-	/// </summary>
-	public SignedRequestContext(
-		string clientId,
-		string signature,
-		long timestamp,
-		string httpMethod,
-		string path,
-		string? bodyHash,
-		IReadOnlyDictionary<string, string> headers) {
-		ClientId = clientId;
-		Signature = signature;
-		Timestamp = timestamp;
-		HttpMethod = httpMethod;
-		Path = path;
-		BodyHash = bodyHash;
-		Headers = headers;
-	}
+/// <remarks>
+/// Initializes a new instance of the <see cref="SignedRequestContext"/> class.
+/// </remarks>
+public sealed class SignedRequestContext(
+	string clientId,
+	string signature,
+	long timestamp,
+	string httpMethod,
+	string path,
+	string? bodyHash,
+	IReadOnlyDictionary<string, string> headers) {
 
 	/// <summary>
 	/// Gets the client ID from the X-Client-Id header.
 	/// </summary>
-	public string ClientId { get; }
+	public string ClientId { get; } = clientId;
 
 	/// <summary>
 	/// Gets the signature value from the X-Signature header.
 	/// Expected format: "v1=hexstring" where v1 indicates the signature version.
 	/// </summary>
-	public string Signature { get; }
+	public string Signature { get; } = signature;
 
 	/// <summary>
 	/// Gets the Unix timestamp from the X-Timestamp header.
 	/// </summary>
-	public long Timestamp { get; }
+	public long Timestamp { get; } = timestamp;
 
 	/// <summary>
 	/// Gets the HTTP method (GET, POST, etc.).
 	/// </summary>
-	public string HttpMethod { get; }
+	public string HttpMethod { get; } = httpMethod;
 
 	/// <summary>
 	/// Gets the request path (e.g., "/api/transactions").
 	/// </summary>
-	public string Path { get; }
+	public string Path { get; } = path;
 
 	/// <summary>
 	/// Gets the SHA256 hash of the request body, or null for bodyless requests.
 	/// </summary>
-	public string? BodyHash { get; }
+	public string? BodyHash { get; } = bodyHash;
 
 	/// <summary>
 	/// Gets additional request headers for reference.
 	/// </summary>
-	public IReadOnlyDictionary<string, string> Headers { get; }
+	public IReadOnlyDictionary<string, string> Headers { get; } = headers;
 
 	/// <summary>
 	/// Gets the timestamp as a DateTimeOffset.
 	/// </summary>
 	public DateTimeOffset TimestampAsDateTime =>
-		DateTimeOffset.FromUnixTimeSeconds(Timestamp);
+		DateTimeOffset.FromUnixTimeSeconds(this.Timestamp);
 
 	/// <summary>
 	/// Builds the canonical request string that should be signed.
 	/// </summary>
 	/// <returns>The canonical string: "{timestamp}.{method}.{path}.{bodyHash}"</returns>
 	public string BuildCanonicalRequest() {
-		var body = BodyHash ?? "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"; // SHA256 of empty string
-		return $"{Timestamp}.{HttpMethod}.{Path}.{body}";
+		var body = this.BodyHash ?? DefaultSignatureValidator.EmptyStringHash;
+		return $"{this.Timestamp}.{this.HttpMethod}.{this.Path}.{body}";
 	}
 
 	/// <summary>
@@ -82,11 +72,11 @@ public sealed class SignedRequestContext {
 	/// </summary>
 	/// <returns>The version string (e.g., "v1") or null if invalid format.</returns>
 	public string? GetSignatureVersion() {
-		var eqIndex = Signature.IndexOf('=');
+		var eqIndex = this.Signature.IndexOf('=');
 		if (eqIndex <= 0) {
 			return null;
 		}
-		return Signature[..eqIndex];
+		return this.Signature[..eqIndex];
 	}
 
 	/// <summary>
@@ -94,10 +84,10 @@ public sealed class SignedRequestContext {
 	/// </summary>
 	/// <returns>The hex-encoded signature or null if invalid format.</returns>
 	public string? GetSignatureValue() {
-		var eqIndex = Signature.IndexOf('=');
-		if (eqIndex < 0 || eqIndex >= Signature.Length - 1) {
+		var eqIndex = this.Signature.IndexOf('=');
+		if (eqIndex < 0 || eqIndex >= this.Signature.Length - 1) {
 			return null;
 		}
-		return Signature[(eqIndex + 1)..];
+		return this.Signature[(eqIndex + 1)..];
 	}
 }

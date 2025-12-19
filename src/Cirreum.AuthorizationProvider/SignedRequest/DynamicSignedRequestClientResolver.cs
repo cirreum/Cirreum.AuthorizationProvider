@@ -41,26 +41,20 @@ using Microsoft.Extensions.Options;
 /// }
 /// </code>
 /// </example>
-public abstract class DynamicSignedRequestClientResolver : ISignedRequestClientResolver {
+/// <remarks>
+/// Initializes a new instance of the <see cref="DynamicSignedRequestClientResolver"/> class.
+/// </remarks>
+/// <param name="validator">The signature validator.</param>
+/// <param name="options">The validation options.</param>
+/// <param name="logger">The logger instance.</param>
+public abstract class DynamicSignedRequestClientResolver(
+	ISignatureValidator validator,
+	IOptions<SignatureValidationOptions> options,
+	ILogger logger) : ISignedRequestClientResolver {
 
-	private readonly ISignatureValidator _validator;
-	private readonly SignatureValidationOptions _options;
-	private readonly ILogger _logger;
-
-	/// <summary>
-	/// Initializes a new instance of the <see cref="DynamicSignedRequestClientResolver"/> class.
-	/// </summary>
-	/// <param name="validator">The signature validator.</param>
-	/// <param name="options">The validation options.</param>
-	/// <param name="logger">The logger instance.</param>
-	protected DynamicSignedRequestClientResolver(
-		ISignatureValidator validator,
-		IOptions<SignatureValidationOptions> options,
-		ILogger logger) {
-		_validator = validator ?? throw new ArgumentNullException(nameof(validator));
-		_options = options?.Value ?? new SignatureValidationOptions();
-		_logger = logger ?? throw new ArgumentNullException(nameof(logger));
-	}
+	private readonly ISignatureValidator _validator = validator ?? throw new ArgumentNullException(nameof(validator));
+	private readonly SignatureValidationOptions _options = options?.Value ?? new SignatureValidationOptions();
+	private readonly ILogger _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
 	/// <summary>
 	/// Looks up stored signing credentials from the database or external source.
@@ -92,17 +86,17 @@ public abstract class DynamicSignedRequestClientResolver : ISignedRequestClientR
 		// 1. Validate signature format
 		var version = context.GetSignatureVersion();
 		if (string.IsNullOrEmpty(version)) {
-			if (_logger.IsEnabled(LogLevel.Debug)) {
-				_logger.LogDebug(
+			if (this._logger.IsEnabled(LogLevel.Debug)) {
+				this._logger.LogDebug(
 					"Invalid signature format for client {ClientId}",
 					context.ClientId);
 			}
 			return SignedRequestValidationResult.InvalidSignatureFormat("Missing version prefix");
 		}
 
-		if (!_options.SupportedSignatureVersions.Contains(version)) {
-			if (_logger.IsEnabled(LogLevel.Debug)) {
-				_logger.LogDebug(
+		if (!this._options.SupportedSignatureVersions.Contains(version)) {
+			if (this._logger.IsEnabled(LogLevel.Debug)) {
+				this._logger.LogDebug(
 					"Unsupported signature version {Version} for client {ClientId}",
 					version,
 					context.ClientId);
@@ -111,9 +105,9 @@ public abstract class DynamicSignedRequestClientResolver : ISignedRequestClientR
 		}
 
 		// 2. Validate timestamp
-		if (!_validator.ValidateTimestamp(context.Timestamp)) {
-			if (_logger.IsEnabled(LogLevel.Debug)) {
-				_logger.LogDebug(
+		if (!this._validator.ValidateTimestamp(context.Timestamp)) {
+			if (this._logger.IsEnabled(LogLevel.Debug)) {
+				this._logger.LogDebug(
 					"Timestamp validation failed for client {ClientId}: {Timestamp}",
 					context.ClientId,
 					context.TimestampAsDateTime);
@@ -124,12 +118,13 @@ public abstract class DynamicSignedRequestClientResolver : ISignedRequestClientR
 		// 3. Lookup credentials
 		IEnumerable<StoredSigningCredential> credentials;
 		try {
-			credentials = await LookupCredentialsAsync(context.ClientId, cancellationToken);
-		}
-		catch (Exception ex) {
-			_logger.LogError(ex,
-				"Error looking up credentials for client {ClientId}",
-				context.ClientId);
+			credentials = await this.LookupCredentialsAsync(context.ClientId, cancellationToken);
+		} catch (Exception ex) {
+			if (this._logger.IsEnabled(LogLevel.Error)) {
+				this._logger.LogError(ex,
+					"Error looking up credentials for client {ClientId}",
+					context.ClientId);
+			}
 			return SignedRequestValidationResult.Failed("Credential lookup failed");
 		}
 
@@ -144,8 +139,8 @@ public abstract class DynamicSignedRequestClientResolver : ISignedRequestClientR
 
 			// Check expiration
 			if (credential.ExpiresAt.HasValue && credential.ExpiresAt.Value < DateTimeOffset.UtcNow) {
-				if (_logger.IsEnabled(LogLevel.Debug)) {
-					_logger.LogDebug(
+				if (this._logger.IsEnabled(LogLevel.Debug)) {
+					this._logger.LogDebug(
 						"Credential {CredentialId} for client {ClientId} has expired",
 						credential.CredentialId,
 						context.ClientId);
@@ -154,7 +149,7 @@ public abstract class DynamicSignedRequestClientResolver : ISignedRequestClientR
 			}
 
 			// Validate signature
-			if (_validator.ValidateSignature(context, credential.SigningSecret)) {
+			if (this._validator.ValidateSignature(context, credential.SigningSecret)) {
 				matchedCredential = credential;
 				break;
 			}
@@ -165,16 +160,16 @@ public abstract class DynamicSignedRequestClientResolver : ISignedRequestClientR
 			var hasAnyCredentials = credentials.Any();
 
 			if (!hasAnyCredentials) {
-				if (_logger.IsEnabled(LogLevel.Debug)) {
-					_logger.LogDebug(
+				if (this._logger.IsEnabled(LogLevel.Debug)) {
+					this._logger.LogDebug(
 						"No credentials found for client {ClientId}",
 						context.ClientId);
 				}
 				return SignedRequestValidationResult.ClientNotFound();
 			}
 
-			if (_logger.IsEnabled(LogLevel.Debug)) {
-				_logger.LogDebug(
+			if (this._logger.IsEnabled(LogLevel.Debug)) {
+				this._logger.LogDebug(
 					"Invalid signature for client {ClientId}",
 					context.ClientId);
 			}
@@ -184,8 +179,8 @@ public abstract class DynamicSignedRequestClientResolver : ISignedRequestClientR
 		// 5. Success - build client
 		var client = matchedCredential.ToClient();
 
-		if (_logger.IsEnabled(LogLevel.Debug)) {
-			_logger.LogDebug(
+		if (this._logger.IsEnabled(LogLevel.Debug)) {
+			this._logger.LogDebug(
 				"Signed request validated for client {ClientId} ({ClientName}) using credential {CredentialId}",
 				client.ClientId,
 				client.ClientName,

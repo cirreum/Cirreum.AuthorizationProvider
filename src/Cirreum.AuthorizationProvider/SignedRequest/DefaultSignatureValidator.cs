@@ -1,28 +1,27 @@
 namespace Cirreum.AuthorizationProvider.SignedRequest;
 
+using Microsoft.Extensions.Options;
 using System.Security.Cryptography;
 using System.Text;
-
-using Microsoft.Extensions.Options;
 
 /// <summary>
 /// Default implementation of <see cref="ISignatureValidator"/> using HMAC-SHA256.
 /// </summary>
-public sealed class DefaultSignatureValidator : ISignatureValidator {
+/// <remarks>
+/// Initializes a new instance of the <see cref="DefaultSignatureValidator"/> class.
+/// </remarks>
+/// <param name="options">The validation options.</param>
+public sealed class DefaultSignatureValidator(
+	IOptions<SignatureValidationOptions> options
+) : ISignatureValidator {
 
-	private readonly SignatureValidationOptions _options;
-
-	// SHA256 hash of empty string - computed once
-	private static readonly string EmptyStringHash =
-		"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+	private readonly SignatureValidationOptions _options = options?.Value ?? new SignatureValidationOptions();
 
 	/// <summary>
-	/// Initializes a new instance of the <see cref="DefaultSignatureValidator"/> class.
+	/// SHA256 hash of an empty string. Use this constant for bodyless requests.
 	/// </summary>
-	/// <param name="options">The validation options.</param>
-	public DefaultSignatureValidator(IOptions<SignatureValidationOptions> options) {
-		_options = options?.Value ?? new SignatureValidationOptions();
-	}
+	public const string EmptyStringHash =
+		"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
 	/// <inheritdoc/>
 	public string EmptyBodyHash => EmptyStringHash;
