@@ -9,6 +9,7 @@ namespace Cirreum.AuthorizationProvider;
 public sealed class AuthorizationSchemeRegistry {
 	private readonly Dictionary<string, string> _audienceSchemeMap = [];
 	private readonly Dictionary<string, string> _headerSchemeMap = new(StringComparer.OrdinalIgnoreCase);
+	private readonly HashSet<string> _customSchemes = [];
 
 	/// <summary>
 	/// Registers an authentication scheme for a specific JWT audience claim.
@@ -28,6 +29,15 @@ public sealed class AuthorizationSchemeRegistry {
 	/// <param name="scheme">The authentication scheme name to use when this header is present.</param>
 	public void RegisterHeaderScheme(string headerName, string scheme) {
 		_headerSchemeMap[headerName] = scheme;
+	}
+
+	/// <summary>
+	/// Registers a custom authentication scheme that uses its own routing logic.
+	/// Used by schemes like SignedRequest that check multiple headers.
+	/// </summary>
+	/// <param name="scheme">The authentication scheme name.</param>
+	public void RegisterCustomScheme(string scheme) {
+		_customSchemes.Add(scheme);
 	}
 
 	/// <summary>
@@ -61,12 +71,20 @@ public sealed class AuthorizationSchemeRegistry {
 	public IReadOnlyDictionary<string, string> HeaderSchemes => _headerSchemeMap;
 
 	/// <summary>
+	/// Gets all registered custom scheme names.
+	/// </summary>
+	public IReadOnlySet<string> CustomSchemes => _customSchemes;
+
+	/// <summary>
 	/// Gets the collection of all registered authentication schemes.
 	/// </summary>
 	/// <value>
 	/// A read-only set containing all unique authentication scheme names that have been registered,
-	/// including both audience-based and header-based schemes.
+	/// including audience-based, header-based, and custom schemes.
 	/// </value>
 	public IReadOnlySet<string> Schemes =>
-		_audienceSchemeMap.Values.Concat(_headerSchemeMap.Values).ToHashSet();
+		_audienceSchemeMap.Values
+			.Concat(_headerSchemeMap.Values)
+			.Concat(_customSchemes)
+			.ToHashSet();
 }

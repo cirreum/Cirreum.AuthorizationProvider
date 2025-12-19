@@ -31,12 +31,25 @@ Centralized management of authentication scheme mappings through `AuthorizationS
 - **Multi-tenant support** - Handle multiple authorization contexts within a single application
 - **Dynamic scheme resolution** - Runtime lookup of appropriate schemes for incoming requests
 
-#### 🔑 API Key Client Registry
-Secure management of API key clients through `ApiKeyClientRegistry`:
+#### 🔑 API Key Client Resolution
+Flexible API key authentication with both static and dynamic resolution:
 
-- **Multi-client support** - Multiple clients can share the same header with different keys
+- **Static configuration** - Define API keys in appsettings.json for simple scenarios
+- **Dynamic resolution** - Database-backed key lookup for hundreds of partners/customers
+- **Efficient filtering** - Use `X-Client-Id` header to optimize database queries
+- **Caching support** - Built-in caching layer with configurable TTL
+- **Composite resolvers** - Chain multiple resolvers (config + database) with priority ordering
 - **Secure validation** - Constant-time comparison to prevent timing attacks
-- **Role assignment** - Configure roles per client for fine-grained authorization
+
+#### 🔏 Signed Request Authentication
+Bank-grade HMAC signature authentication for high-security scenarios:
+
+- **HMAC-SHA256 signatures** - Cryptographically signed requests with versioning (`v1=`)
+- **Replay protection** - Timestamp validation with configurable tolerance (default 2 minutes)
+- **Key rotation** - Support for multiple active signing credentials per client
+- **Rate limiting hooks** - `ISignatureValidationEvents` interface for custom rate limiting
+- **Efficient lookup** - Direct database query by `X-Client-Id` header
+- **Constant-time comparison** - Prevents timing attacks on signature validation
 
 #### ⚙️ Configuration Abstractions
 Flexible configuration models that support provider-specific settings while maintaining consistency:
@@ -108,6 +121,16 @@ For local development, use user secrets:
 |---------------|------------|-------------------|----------|
 | OAuth/OIDC | `AudienceAuthorizationProviderRegistrar` | JWT audience claim | User authentication, interactive flows |
 | API Key | `HeaderAuthorizationProviderRegistrar` | HTTP header + key validation | Service-to-service, broker applications |
+| Signed Request | `DynamicSignedRequestClientResolver` | HMAC signature + client ID | External partners, financial APIs, ISO compliance |
+
+### Authentication Security Levels
+
+| Security Level | Auth Type | Best For |
+|---------------|-----------|----------|
+| Basic | Static API Key | Dev/test, simple integrations |
+| Medium | Dynamic API Key | Internal services, trusted backends |
+| High | Signed Request | External partners, financial APIs, ISO/PCI compliance |
+| User | Entra JWT | End-user authentication |
 
 ### Architecture
 
@@ -136,6 +159,21 @@ AuthorizationProviderInstanceSettings (Base)
 │
 └── HeaderAuthorizationProviderInstanceSettings
     └── HeaderName, ClientId, ClientName, Roles
+
+Dynamic Resolution (Database-backed)
+├── ApiKey/
+│   ├── IApiKeyClientResolver - Interface for key resolution
+│   ├── DynamicApiKeyClientResolver - Base class for database lookup
+│   ├── ConfigurationApiKeyClientResolver - Static config resolver
+│   ├── CachingApiKeyClientResolver - Caching decorator
+│   └── CompositeApiKeyClientResolver - Chains multiple resolvers
+│
+└── SignedRequest/
+    ├── ISignedRequestClientResolver - Interface for credential resolution
+    ├── DynamicSignedRequestClientResolver - Base class for database lookup
+    ├── ISignatureValidator - Signature computation/validation
+    ├── DefaultSignatureValidator - HMAC-SHA256 implementation
+    └── ISignatureValidationEvents - Rate limiting hooks
 ```
 
 ### Installation
