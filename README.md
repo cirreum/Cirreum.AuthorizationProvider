@@ -47,9 +47,11 @@ Bank-grade HMAC signature authentication for high-security scenarios:
 - **HMAC-SHA256 signatures** - Cryptographically signed requests with versioning (`v1=`)
 - **Replay protection** - Timestamp validation with configurable tolerance (default 2 minutes)
 - **Key rotation** - Support for multiple active signing credentials per client
+- **Per-client options** - Override timestamp tolerance and signature versions per client
 - **Rate limiting hooks** - `ISignatureValidationEvents` interface for custom rate limiting
 - **Efficient lookup** - Direct database query by `X-Client-Id` header
 - **Constant-time comparison** - Prevents timing attacks on signature validation
+- **Allocation-free validation** - `Span<byte>` overloads for high-performance body hashing
 
 #### ⚙️ Configuration Abstractions
 Flexible configuration models that support provider-specific settings while maintaining consistency:
@@ -69,18 +71,18 @@ For production environments, store API keys in Azure Key Vault using the connect
 ```json
 {
   "ConnectionStrings": {
-    "LapCastBroker": "@Microsoft.KeyVault(SecretUri=https://your-vault.vault.azure.net/secrets/LapCastBrokerKey)"
+    "MyAppBroker": "@Microsoft.KeyVault(SecretUri=https://your-vault.vault.azure.net/secrets/MyAppBrokerKey)"
   },
   "Cirreum": {
     "Authorization": {
       "Providers": {
         "ApiKey": {
           "Instances": {
-            "LapCastBroker": {
+            "MyAppBroker": {
               "Enabled": true,
               "HeaderName": "X-Api-Key",
-              "ClientId": "lapcast-broker",
-              "ClientName": "LapCast Broker",
+              "ClientId": "MyApp-broker",
+              "ClientName": "MyApp Broker",
               "Roles": ["App.System"]
             }
           }
@@ -91,7 +93,7 @@ For production environments, store API keys in Azure Key Vault using the connect
 }
 ```
 
-The instance name (`LapCastBroker`) is used as the connection string key, allowing both the API and client applications to resolve the same secret from Key Vault using `configuration.GetConnectionString("LapCastBroker")`.
+The instance name (`MyAppBroker`) is used as the connection string key, allowing both the API and client applications to resolve the same secret from Key Vault using `configuration.GetConnectionString("MyAppBroker")`.
 
 For local development, use user secrets:
 ```json
@@ -101,10 +103,10 @@ For local development, use user secrets:
       "Providers": {
         "ApiKey": {
           "Instances": {
-            "LapCastBroker": {
+            "MyAppBroker": {
               "Enabled": true,
               "HeaderName": "X-Api-Key",
-              "ClientId": "lapcast-broker",
+              "ClientId": "MyApp-broker",
               "Key": "dev-only-key"
             }
           }
@@ -171,7 +173,8 @@ Dynamic Resolution (Database-backed)
 └── SignedRequest/
     ├── ISignedRequestClientResolver - Interface for credential resolution
     ├── DynamicSignedRequestClientResolver - Base class for database lookup
-    ├── ISignatureValidator - Signature computation/validation
+    ├── StoredSigningCredential - Credential model with per-client options
+    ├── ISignatureValidator - Signature computation/validation (with Span<byte> overloads)
     ├── DefaultSignatureValidator - HMAC-SHA256 implementation
     └── ISignatureValidationEvents - Rate limiting hooks
 ```

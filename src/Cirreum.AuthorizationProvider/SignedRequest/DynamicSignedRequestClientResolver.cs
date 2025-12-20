@@ -84,7 +84,7 @@ public abstract class DynamicSignedRequestClientResolver(
 		SignedRequestContext context,
 		CancellationToken cancellationToken = default) {
 
-		// 1. Validate signature format
+		// 1. Validate signature format (basic check before lookup)
 		var version = context.GetSignatureVersion();
 		if (string.IsNullOrEmpty(version)) {
 			if (this._logger.IsEnabled(LogLevel.Debug)) {
@@ -95,28 +95,7 @@ public abstract class DynamicSignedRequestClientResolver(
 			return SignedRequestValidationResult.InvalidSignatureFormat("Missing version prefix");
 		}
 
-		if (!this._options.SupportedSignatureVersions.Contains(version)) {
-			if (this._logger.IsEnabled(LogLevel.Debug)) {
-				this._logger.LogDebug(
-					"Unsupported signature version {Version} for client {ClientId}",
-					version,
-					context.ClientId);
-			}
-			return SignedRequestValidationResult.InvalidSignatureFormat($"Unsupported version: {version}");
-		}
-
-		// 2. Validate timestamp
-		if (!this._validator.ValidateTimestamp(context.Timestamp)) {
-			if (this._logger.IsEnabled(LogLevel.Debug)) {
-				this._logger.LogDebug(
-					"Timestamp validation failed for client {ClientId}: {Timestamp}",
-					context.ClientId,
-					context.TimestampAsDateTime);
-			}
-			return SignedRequestValidationResult.TimestampExpired();
-		}
-
-		// 3. Lookup credentials
+		// 2. Lookup credentials first - we need per-client options for validation
 		IEnumerable<StoredSigningCredential> credentials;
 		try {
 			credentials = await this.LookupCredentialsAsync(context.ClientId, cancellationToken);
@@ -129,7 +108,7 @@ public abstract class DynamicSignedRequestClientResolver(
 			return SignedRequestValidationResult.Failed("Credential lookup failed");
 		}
 
-		// 4. Try each credential until we find a match (supports key rotation)
+		// 3. Try each credential until we find a match (supports key rotation)
 		StoredSigningCredential? matchedCredential = null;
 
 		foreach (var credential in credentials) {
@@ -145,6 +124,33 @@ public abstract class DynamicSignedRequestClientResolver(
 						"Credential {CredentialId} for client {ClientId} has expired",
 						credential.CredentialId,
 						context.ClientId);
+				}
+				continue;
+			}
+
+			// Get effective values (per-client override or app defaults)
+			var supportedVersions = credential.SupportedSignatureVersions ?? this._options.SupportedSignatureVersions;
+			var timestampTolerance = credential.TimestampTolerance ?? this._options.TimestampTolerance;
+			var futureTimestampTolerance = credential.FutureTimestampTolerance ?? this._options.FutureTimestampTolerance;
+
+			// Validate signature version
+			if (!supportedVersions.Contains(version)) {
+				if (this._logger.IsEnabled(LogLevel.Debug)) {
+					this._logger.LogDebug(
+						"Unsupported signature version {Version} for credential {CredentialId}",
+						version,
+						credential.CredentialId);
+				}
+				continue;
+			}
+
+			// Validate timestamp
+			if (!ValidateTimestamp(context.Timestamp, timestampTolerance, futureTimestampTolerance)) {
+				if (this._logger.IsEnabled(LogLevel.Debug)) {
+					this._logger.LogDebug(
+						"Timestamp validation failed for credential {CredentialId}: {Timestamp}",
+						credential.CredentialId,
+						context.TimestampAsDateTime);
 				}
 				continue;
 			}
@@ -177,7 +183,7 @@ public abstract class DynamicSignedRequestClientResolver(
 			return SignedRequestValidationResult.InvalidSignature();
 		}
 
-		// 5. Success - build client
+		// 4. Success - build client
 		var client = matchedCredential.ToClient();
 
 		if (this._logger.IsEnabled(LogLevel.Debug)) {
@@ -189,6 +195,27 @@ public abstract class DynamicSignedRequestClientResolver(
 		}
 
 		return SignedRequestValidationResult.Success(client);
+	}
+
+	/// <summary>
+	/// Validates the timestamp against the provided tolerances.
+	/// </summary>
+	private static bool ValidateTimestamp(long timestamp, TimeSpan timestampTolerance, TimeSpan futureTimestampTolerance) {
+		var requestTime = DateTimeOffset.FromUnixTimeSeconds(timestamp);
+		var now = DateTimeOffset.UtcNow;
+
+		// Check if timestamp is too old
+		var age = now - requestTime;
+		if (age > timestampTolerance) {
+			return false;
+		}
+
+		// Check if timestamp is too far in the future (clock skew)
+		if (requestTime > now + futureTimestampTolerance) {
+			return false;
+		}
+
+		return true;
 	}
 
 }

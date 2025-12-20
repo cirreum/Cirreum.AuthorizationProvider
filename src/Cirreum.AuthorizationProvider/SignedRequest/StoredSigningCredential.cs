@@ -64,6 +64,34 @@ public sealed record StoredSigningCredential {
 	public IReadOnlyDictionary<string, string>? Claims { get; init; }
 
 	/// <summary>
+	/// Gets an optional per-client timestamp tolerance that overrides <see cref="SignatureValidationOptions.TimestampTolerance"/>.
+	/// If null, the application's default is used.
+	/// </summary>
+	/// <remarks>
+	/// Set this for clients with known clock skew issues to allow older requests.
+	/// </remarks>
+	public TimeSpan? TimestampTolerance { get; init; }
+
+	/// <summary>
+	/// Gets an optional per-client future timestamp tolerance that overrides <see cref="SignatureValidationOptions.FutureTimestampTolerance"/>.
+	/// If null, the application's default is used.
+	/// </summary>
+	/// <remarks>
+	/// Set this for clients with clocks running ahead to allow future-dated requests.
+	/// </remarks>
+	public TimeSpan? FutureTimestampTolerance { get; init; }
+
+	/// <summary>
+	/// Gets optional per-client supported signature versions that override <see cref="SignatureValidationOptions.SupportedSignatureVersions"/>.
+	/// If null, the application's default is used.
+	/// </summary>
+	/// <remarks>
+	/// Use this to restrict or expand allowed signature versions for specific clients.
+	/// For example, allow only "v2" for new clients while legacy clients can still use "v1".
+	/// </remarks>
+	public IReadOnlySet<string>? SupportedSignatureVersions { get; init; }
+
+	/// <summary>
 	/// Converts this stored credential to a <see cref="SignedRequestClient"/> for authentication.
 	/// </summary>
 	/// <param name="scheme">The authentication scheme name.</param>
