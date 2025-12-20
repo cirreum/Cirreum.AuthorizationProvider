@@ -1,37 +1,27 @@
 namespace Cirreum.AuthorizationProvider.ApiKey;
 
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 /// <summary>
 /// Resolves API key clients from the configuration-based <see cref="ApiKeyClientRegistry"/>.
 /// This is the default resolver that maintains backward compatibility with existing
 /// appsettings/KeyVault-based key storage.
 /// </summary>
-public sealed class ConfigurationApiKeyClientResolver : IApiKeyClientResolver {
+/// <remarks>
+/// Initializes a new instance of the <see cref="ConfigurationApiKeyClientResolver"/> class.
+/// </remarks>
+/// <param name="registry">The API key client registry.</param>
+/// <param name="validator">The API key validator.</param>
+/// <param name="logger">The logger.</param>
+public sealed class ConfigurationApiKeyClientResolver(
+	ApiKeyClientRegistry registry,
+	IApiKeyValidator validator,
+	ILogger<ConfigurationApiKeyClientResolver> logger
+) : IApiKeyClientResolver {
 
-	private readonly ApiKeyClientRegistry _registry;
-	private readonly IApiKeyValidator _validator;
-	private readonly ApiKeyValidationOptions _options;
-	private readonly ILogger<ConfigurationApiKeyClientResolver> _logger;
-
-	/// <summary>
-	/// Initializes a new instance of the <see cref="ConfigurationApiKeyClientResolver"/> class.
-	/// </summary>
-	/// <param name="registry">The API key client registry.</param>
-	/// <param name="validator">The API key validator.</param>
-	/// <param name="options">The validation options.</param>
-	/// <param name="logger">The logger.</param>
-	public ConfigurationApiKeyClientResolver(
-		ApiKeyClientRegistry registry,
-		IApiKeyValidator validator,
-		IOptions<ApiKeyValidationOptions> options,
-		ILogger<ConfigurationApiKeyClientResolver> logger) {
-		_registry = registry ?? throw new ArgumentNullException(nameof(registry));
-		_validator = validator ?? throw new ArgumentNullException(nameof(validator));
-		_options = options?.Value ?? new ApiKeyValidationOptions();
-		_logger = logger ?? throw new ArgumentNullException(nameof(logger));
-	}
+	private readonly ApiKeyClientRegistry _registry = registry ?? throw new ArgumentNullException(nameof(registry));
+	private readonly IApiKeyValidator _validator = validator ?? throw new ArgumentNullException(nameof(validator));
+	private readonly ILogger<ConfigurationApiKeyClientResolver> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
 	/// <inheritdoc/>
 	public IReadOnlySet<string> SupportedHeaders => _registry.RegisteredHeaders;

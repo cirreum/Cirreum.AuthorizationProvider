@@ -1,30 +1,22 @@
 namespace Cirreum.AuthorizationProvider.ApiKey;
 
+using Microsoft.Extensions.Options;
 using System.Security.Cryptography;
 using System.Text;
-
-using Microsoft.Extensions.Options;
 
 /// <summary>
 /// Default implementation of <see cref="IApiKeyValidator"/> providing secure
 /// validation utilities for API keys.
 /// </summary>
-public sealed class DefaultApiKeyValidator : IApiKeyValidator {
+/// <remarks>
+/// Initializes a new instance of the <see cref="DefaultApiKeyValidator"/> class.
+/// </remarks>
+/// <param name="options">The validation options.</param>
+public sealed class DefaultApiKeyValidator(
+	IOptions<ApiKeyValidationOptions> options
+) : IApiKeyValidator {
 
-	private readonly ApiKeyValidationOptions _options;
-
-	/// <summary>
-	/// Initializes a new instance of the <see cref="DefaultApiKeyValidator"/> class.
-	/// </summary>
-	/// <param name="options">The validation options.</param>
-	public DefaultApiKeyValidator(IOptions<ApiKeyValidationOptions> options) {
-		_options = options?.Value ?? new ApiKeyValidationOptions();
-	}
-
-	/// <summary>
-	/// Initializes a new instance with default options.
-	/// </summary>
-	public DefaultApiKeyValidator() : this(Options.Create(new ApiKeyValidationOptions())) { }
+	private readonly ApiKeyValidationOptions _options = options?.Value ?? new ApiKeyValidationOptions();
 
 	/// <inheritdoc/>
 	public ApiKeyFormatValidationResult ValidateFormat(string key) {
@@ -32,18 +24,18 @@ public sealed class DefaultApiKeyValidator : IApiKeyValidator {
 			return ApiKeyFormatValidationResult.Invalid("API key cannot be empty");
 		}
 
-		if (key.Length < _options.MinimumKeyLength) {
+		if (key.Length < this._options.MinimumKeyLength) {
 			return ApiKeyFormatValidationResult.Invalid(
-				$"API key must be at least {_options.MinimumKeyLength} characters");
+				$"API key must be at least {this._options.MinimumKeyLength} characters");
 		}
 
-		if (key.Length > _options.MaximumKeyLength) {
+		if (key.Length > this._options.MaximumKeyLength) {
 			return ApiKeyFormatValidationResult.Invalid(
-				$"API key cannot exceed {_options.MaximumKeyLength} characters");
+				$"API key cannot exceed {this._options.MaximumKeyLength} characters");
 		}
 
-		if (_options.EnforceValidCharacters) {
-			var validChars = _options.ValidCharacters.ToHashSet();
+		if (this._options.EnforceValidCharacters) {
+			var validChars = this._options.ValidCharacters.ToHashSet();
 			foreach (var c in key) {
 				if (!validChars.Contains(c)) {
 					return ApiKeyFormatValidationResult.Invalid(
@@ -73,13 +65,13 @@ public sealed class DefaultApiKeyValidator : IApiKeyValidator {
 			return false;
 		}
 
-		var computedHash = HashKey(providedKey, salt);
-		return CompareKeysSecurely(computedHash.Hash, storedHash);
+		var computedHash = this.HashKey(providedKey, salt);
+		return this.CompareKeysSecurely(computedHash.Hash, storedHash);
 	}
 
 	/// <inheritdoc/>
 	public bool IsExpired(DateTimeOffset? expiresAt, TimeSpan? gracePeriod = null) {
-		if (_options.AllowExpiredKeys) {
+		if (this._options.AllowExpiredKeys) {
 			return false;
 		}
 
@@ -87,7 +79,7 @@ public sealed class DefaultApiKeyValidator : IApiKeyValidator {
 			return false;
 		}
 
-		var effectiveGracePeriod = gracePeriod ?? _options.ExpirationGracePeriod;
+		var effectiveGracePeriod = gracePeriod ?? this._options.ExpirationGracePeriod;
 		var effectiveExpiration = expiresAt.Value.Add(effectiveGracePeriod);
 
 		return DateTimeOffset.UtcNow > effectiveExpiration;
@@ -119,4 +111,5 @@ public sealed class DefaultApiKeyValidator : IApiKeyValidator {
 		RandomNumberGenerator.Fill(saltBytes);
 		return Convert.ToBase64String(saltBytes);
 	}
+
 }

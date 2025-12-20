@@ -1,11 +1,10 @@
 namespace Cirreum.AuthorizationProvider.ApiKey;
 
-using System.Security.Cryptography;
-using System.Text;
-
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Security.Cryptography;
+using System.Text;
 
 /// <summary>
 /// A caching decorator for <see cref="IApiKeyClientResolver"/> that provides
@@ -22,35 +21,28 @@ using Microsoft.Extensions.Options;
 /// cache resolver or using shorter TTLs.
 /// </para>
 /// </remarks>
-public sealed class CachingApiKeyClientResolver : IApiKeyClientResolver, IDisposable {
+/// <remarks>
+/// Initializes a new instance of the <see cref="CachingApiKeyClientResolver"/> class.
+/// </remarks>
+/// <param name="inner">The inner resolver to cache.</param>
+/// <param name="cache">The memory cache instance.</param>
+/// <param name="options">The caching options.</param>
+/// <param name="logger">The logger.</param>
+public sealed class CachingApiKeyClientResolver(
+	IApiKeyClientResolver inner,
+	IMemoryCache cache,
+	IOptions<ApiKeyCachingOptions> options,
+	ILogger<CachingApiKeyClientResolver> logger
+) : IApiKeyClientResolver, IDisposable {
 
-	private readonly IApiKeyClientResolver _inner;
-	private readonly IMemoryCache _cache;
-	private readonly ApiKeyCachingOptions _options;
-	private readonly ILogger<CachingApiKeyClientResolver> _logger;
-	private readonly bool _ownsCache;
+	private readonly IApiKeyClientResolver _inner = inner ?? throw new ArgumentNullException(nameof(inner));
+	private readonly IMemoryCache _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+	private readonly ApiKeyCachingOptions _options = options?.Value ?? new ApiKeyCachingOptions();
+	private readonly ILogger<CachingApiKeyClientResolver> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+	private readonly bool _ownsCache = false;
 
 	private const string CacheKeyPrefix = "ApiKeyResolver:";
 	private const string NotFoundMarker = "__NOT_FOUND__";
-
-	/// <summary>
-	/// Initializes a new instance of the <see cref="CachingApiKeyClientResolver"/> class.
-	/// </summary>
-	/// <param name="inner">The inner resolver to cache.</param>
-	/// <param name="cache">The memory cache instance.</param>
-	/// <param name="options">The caching options.</param>
-	/// <param name="logger">The logger.</param>
-	public CachingApiKeyClientResolver(
-		IApiKeyClientResolver inner,
-		IMemoryCache cache,
-		IOptions<ApiKeyCachingOptions> options,
-		ILogger<CachingApiKeyClientResolver> logger) {
-		_inner = inner ?? throw new ArgumentNullException(nameof(inner));
-		_cache = cache ?? throw new ArgumentNullException(nameof(cache));
-		_options = options?.Value ?? new ApiKeyCachingOptions();
-		_logger = logger ?? throw new ArgumentNullException(nameof(logger));
-		_ownsCache = false;
-	}
 
 	/// <summary>
 	/// Initializes a new instance with a dedicated cache.
@@ -83,7 +75,7 @@ public sealed class CachingApiKeyClientResolver : IApiKeyClientResolver, IDispos
 		var cacheKey = GenerateCacheKey(headerName, providedKey);
 
 		// Try to get from cache
-		if (_cache.TryGetValue(cacheKey, out object? cached)) {
+		if (_cache.TryGetValue(cacheKey, out var cached)) {
 			if (cached is ApiKeyClient client) {
 				if (_logger.IsEnabled(LogLevel.Debug)) {
 					_logger.LogDebug(
@@ -122,8 +114,7 @@ public sealed class CachingApiKeyClientResolver : IApiKeyClientResolver, IDispos
 					result.Client.ClientId,
 					_options.SuccessCacheDuration);
 			}
-		}
-		else if (!result.IsSuccess && _options.EnableNegativeCaching) {
+		} else if (!result.IsSuccess && _options.EnableNegativeCaching) {
 			var entryOptions = new MemoryCacheEntryOptions()
 				.SetAbsoluteExpiration(_options.NotFoundCacheDuration)
 				.SetSize(1);

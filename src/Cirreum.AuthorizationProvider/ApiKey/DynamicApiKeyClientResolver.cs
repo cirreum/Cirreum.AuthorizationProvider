@@ -48,22 +48,18 @@ using Microsoft.Extensions.Logging;
 /// }
 /// </code>
 /// </example>
-public abstract class DynamicApiKeyClientResolver : IApiKeyClientResolver {
+/// <remarks>
+/// Initializes a new instance of the <see cref="DynamicApiKeyClientResolver"/> class.
+/// </remarks>
+/// <param name="validator">The API key validator for format and hash validation.</param>
+/// <param name="logger">The logger instance.</param>
+public abstract class DynamicApiKeyClientResolver(
+	IApiKeyValidator validator,
+	ILogger logger
+) : IApiKeyClientResolver {
 
-	private readonly IApiKeyValidator _validator;
-	private readonly ILogger _logger;
-
-	/// <summary>
-	/// Initializes a new instance of the <see cref="DynamicApiKeyClientResolver"/> class.
-	/// </summary>
-	/// <param name="validator">The API key validator for format and hash validation.</param>
-	/// <param name="logger">The logger instance.</param>
-	protected DynamicApiKeyClientResolver(
-		IApiKeyValidator validator,
-		ILogger logger) {
-		_validator = validator ?? throw new ArgumentNullException(nameof(validator));
-		_logger = logger ?? throw new ArgumentNullException(nameof(logger));
-	}
+	private readonly IApiKeyValidator _validator = validator ?? throw new ArgumentNullException(nameof(validator));
+	private readonly ILogger _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
 	/// <inheritdoc/>
 	public abstract IReadOnlySet<string> SupportedHeaders { get; }
@@ -107,10 +103,10 @@ public abstract class DynamicApiKeyClientResolver : IApiKeyClientResolver {
 		var headerName = context.HeaderName;
 
 		// 1. Validate format
-		var formatResult = _validator.ValidateFormat(providedKey);
+		var formatResult = this._validator.ValidateFormat(providedKey);
 		if (!formatResult.IsValid) {
-			if (_logger.IsEnabled(LogLevel.Debug)) {
-				_logger.LogDebug(
+			if (this._logger.IsEnabled(LogLevel.Debug)) {
+				this._logger.LogDebug(
 					"API key format validation failed for header {HeaderName}: {Reason}",
 					headerName,
 					formatResult.ErrorReason);
@@ -121,25 +117,26 @@ public abstract class DynamicApiKeyClientResolver : IApiKeyClientResolver {
 		// 2. Lookup stored keys (implementations can use context for filtering)
 		IEnumerable<StoredApiKey> storedKeys;
 		try {
-			storedKeys = await LookupKeysAsync(context, cancellationToken);
-		}
-		catch (Exception ex) {
-			_logger.LogError(ex,
+			storedKeys = await this.LookupKeysAsync(context, cancellationToken);
+		} catch (Exception ex) {
+			if (this._logger.IsEnabled(LogLevel.Error)) {
+				this._logger.LogError(ex,
 				"Error looking up API keys for header {HeaderName}",
 				headerName);
+			}
 			return ApiKeyResolveResult.Failed("Key lookup failed");
 		}
 
 		// 3. Find matching key using secure hash comparison
 		foreach (var storedKey in storedKeys) {
-			if (!_validator.ValidateKeyHash(providedKey, storedKey.KeyHash, storedKey.Salt)) {
+			if (!this._validator.ValidateKeyHash(providedKey, storedKey.KeyHash, storedKey.Salt)) {
 				continue;
 			}
 
 			// 4. Check expiration
-			if (_validator.IsExpired(storedKey.ExpiresAt)) {
-				if (_logger.IsEnabled(LogLevel.Debug)) {
-					_logger.LogDebug(
+			if (this._validator.IsExpired(storedKey.ExpiresAt)) {
+				if (this._logger.IsEnabled(LogLevel.Debug)) {
+					this._logger.LogDebug(
 						"API key expired for client {ClientId} on header {HeaderName}",
 						storedKey.ClientId,
 						headerName);
@@ -150,8 +147,8 @@ public abstract class DynamicApiKeyClientResolver : IApiKeyClientResolver {
 			// 5. Success - build client
 			var client = storedKey.ToApiKeyClient();
 
-			if (_logger.IsEnabled(LogLevel.Debug)) {
-				_logger.LogDebug(
+			if (this._logger.IsEnabled(LogLevel.Debug)) {
+				this._logger.LogDebug(
 					"API key resolved for client {ClientId} ({ClientName}) via header {HeaderName}",
 					client.ClientId,
 					client.ClientName,
@@ -162,8 +159,8 @@ public abstract class DynamicApiKeyClientResolver : IApiKeyClientResolver {
 		}
 
 		// No matching key found
-		if (_logger.IsEnabled(LogLevel.Debug)) {
-			_logger.LogDebug(
+		if (this._logger.IsEnabled(LogLevel.Debug)) {
+			this._logger.LogDebug(
 				"API key not found for header {HeaderName}",
 				headerName);
 		}

@@ -18,7 +18,7 @@ using Microsoft.Extensions.Logging;
 /// </remarks>
 public sealed class CompositeApiKeyClientResolver : IApiKeyClientResolver {
 
-	private readonly IReadOnlyList<IApiKeyClientResolver> _resolvers;
+	private readonly List<IApiKeyClientResolver> _resolvers;
 	private readonly ILogger<CompositeApiKeyClientResolver> _logger;
 	private readonly Lazy<IReadOnlySet<string>> _supportedHeaders;
 

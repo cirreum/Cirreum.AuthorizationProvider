@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 /// Extension methods for <see cref="IServiceCollection"/> to support authorization provider registration.
 /// </summary>
 public static class ServiceCollectionExtensions {
+
 	/// <summary>
 	/// Gets the <see cref="AuthorizationSchemeRegistry"/>.
 	/// </summary>
@@ -41,4 +42,5 @@ public static class ServiceCollectionExtensions {
 		services.AddSingleton(registry);
 		return registry;
 	}
+
 }

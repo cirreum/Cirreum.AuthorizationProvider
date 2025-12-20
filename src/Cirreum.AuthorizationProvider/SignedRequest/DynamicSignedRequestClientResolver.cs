@@ -50,7 +50,8 @@ using Microsoft.Extensions.Options;
 public abstract class DynamicSignedRequestClientResolver(
 	ISignatureValidator validator,
 	IOptions<SignatureValidationOptions> options,
-	ILogger logger) : ISignedRequestClientResolver {
+	ILogger logger
+) : ISignedRequestClientResolver {
 
 	private readonly ISignatureValidator _validator = validator ?? throw new ArgumentNullException(nameof(validator));
 	private readonly SignatureValidationOptions _options = options?.Value ?? new SignatureValidationOptions();
@@ -189,4 +190,5 @@ public abstract class DynamicSignedRequestClientResolver(
 
 		return SignedRequestValidationResult.Success(client);
 	}
+
 }

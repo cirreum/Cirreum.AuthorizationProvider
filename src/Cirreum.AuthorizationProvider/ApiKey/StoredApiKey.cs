@@ -52,11 +52,12 @@ public record StoredApiKey {
 	/// </summary>
 	/// <returns>An API key client with the stored key's properties.</returns>
 	public ApiKeyClient ToApiKeyClient() => new() {
-		ClientId = ClientId,
-		ClientName = ClientName,
-		Scheme = $"Header:{HeaderName}",
-		Roles = Roles,
-		ExpiresAt = ExpiresAt,
-		Claims = Claims
+		ClientId = this.ClientId,
+		ClientName = this.ClientName,
+		Scheme = $"Header:{this.HeaderName}",
+		Roles = this.Roles,
+		ExpiresAt = this.ExpiresAt,
+		Claims = this.Claims
 	};
+
 }

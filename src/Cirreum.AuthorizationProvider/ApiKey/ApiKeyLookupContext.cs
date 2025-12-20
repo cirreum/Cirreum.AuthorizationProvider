@@ -29,26 +29,21 @@ namespace Cirreum.AuthorizationProvider.ApiKey;
 /// }
 /// </code>
 /// </example>
-public sealed class ApiKeyLookupContext {
+/// <remarks>
+/// Initializes a new instance of the <see cref="ApiKeyLookupContext"/> class.
+/// </remarks>
+/// <param name="headerName">The header name containing the API key.</param>
+/// <param name="headers">All request headers (excluding the API key value for security).</param>
+public sealed class ApiKeyLookupContext(
+	string headerName,
+	IReadOnlyDictionary<string, string> headers) {
 
-	private readonly IReadOnlyDictionary<string, string> _headers;
-
-	/// <summary>
-	/// Initializes a new instance of the <see cref="ApiKeyLookupContext"/> class.
-	/// </summary>
-	/// <param name="headerName">The header name containing the API key.</param>
-	/// <param name="headers">All request headers (excluding the API key value for security).</param>
-	public ApiKeyLookupContext(
-		string headerName,
-		IReadOnlyDictionary<string, string> headers) {
-		HeaderName = headerName;
-		_headers = headers ?? new Dictionary<string, string>();
-	}
+	private readonly IReadOnlyDictionary<string, string> _headers = headers ?? new Dictionary<string, string>();
 
 	/// <summary>
 	/// Gets the HTTP header name that contained the API key.
 	/// </summary>
-	public string HeaderName { get; }
+	public string HeaderName { get; } = headerName;
 
 	/// <summary>
 	/// Gets the value of a specific header, or null if not present.
@@ -64,7 +59,7 @@ public sealed class ApiKeyLookupContext {
 	/// </list>
 	/// </remarks>
 	public string? GetHeader(string headerName) {
-		return _headers.TryGetValue(headerName, out var value) ? value : null;
+		return this._headers.TryGetValue(headerName, out var value) ? value : null;
 	}
 
 	/// <summary>
@@ -72,10 +67,10 @@ public sealed class ApiKeyLookupContext {
 	/// </summary>
 	/// <param name="headerName">The name of the header to check (case-insensitive).</param>
 	/// <returns>True if the header exists, false otherwise.</returns>
-	public bool HasHeader(string headerName) => _headers.ContainsKey(headerName);
+	public bool HasHeader(string headerName) => this._headers.ContainsKey(headerName);
 
 	/// <summary>
 	/// Gets all available headers (excluding the API key value).
 	/// </summary>
-	public IReadOnlyDictionary<string, string> Headers => _headers;
+	public IReadOnlyDictionary<string, string> Headers => this._headers;
 }
