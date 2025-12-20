@@ -79,7 +79,17 @@ public sealed class DefaultSignatureValidator(
 			return EmptyStringHash;
 		}
 
-		var hash = SHA256.HashData(body);
+		return this.ComputeBodyHash(body.AsSpan());
+	}
+
+	/// <inheritdoc/>
+	public string ComputeBodyHash(ReadOnlySpan<byte> body) {
+		if (body.IsEmpty) {
+			return EmptyStringHash;
+		}
+
+		Span<byte> hash = stackalloc byte[SHA256.HashSizeInBytes];
+		SHA256.HashData(body, hash);
 		return Convert.ToHexString(hash).ToLowerInvariant();
 	}
 

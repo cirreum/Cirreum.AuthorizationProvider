@@ -53,10 +53,35 @@ public sealed class DefaultApiKeyValidator(
 			return false;
 		}
 
-		var providedBytes = Encoding.UTF8.GetBytes(providedKey);
-		var expectedBytes = Encoding.UTF8.GetBytes(expectedKey);
+		var providedByteCount = Encoding.UTF8.GetByteCount(providedKey);
+		var expectedByteCount = Encoding.UTF8.GetByteCount(expectedKey);
 
-		return CryptographicOperations.FixedTimeEquals(providedBytes, expectedBytes);
+		// Use stackalloc for reasonable key sizes, fall back to array for larger keys
+		const int StackAllocThreshold = 256;
+
+		if (providedByteCount <= StackAllocThreshold && expectedByteCount <= StackAllocThreshold) {
+			Span<byte> providedBytes = stackalloc byte[providedByteCount];
+			Span<byte> expectedBytes = stackalloc byte[expectedByteCount];
+
+			Encoding.UTF8.GetBytes(providedKey, providedBytes);
+			Encoding.UTF8.GetBytes(expectedKey, expectedBytes);
+
+			return this.CompareKeysSecurely(providedBytes, expectedBytes);
+		}
+
+		// Fall back to heap allocation for very large keys
+		return this.CompareKeysSecurely(
+			Encoding.UTF8.GetBytes(providedKey),
+			Encoding.UTF8.GetBytes(expectedKey));
+	}
+
+	/// <inheritdoc/>
+	public bool CompareKeysSecurely(ReadOnlySpan<byte> providedKey, ReadOnlySpan<byte> expectedKey) {
+		if (providedKey.IsEmpty || expectedKey.IsEmpty) {
+			return false;
+		}
+
+		return CryptographicOperations.FixedTimeEquals(providedKey, expectedKey);
 	}
 
 	/// <inheritdoc/>

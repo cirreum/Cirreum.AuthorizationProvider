@@ -22,6 +22,15 @@ public interface IApiKeyValidator {
 	bool CompareKeysSecurely(string providedKey, string expectedKey);
 
 	/// <summary>
+	/// Performs a constant-time comparison of two keys to prevent timing attacks.
+	/// Use this overload for allocation-free comparison when keys are already encoded as bytes.
+	/// </summary>
+	/// <param name="providedKey">The key provided in the request as UTF-8 bytes.</param>
+	/// <param name="expectedKey">The expected key value as UTF-8 bytes.</param>
+	/// <returns><see langword="true"/> if the keys match; otherwise, <see langword="false"/>.</returns>
+	bool CompareKeysSecurely(ReadOnlySpan<byte> providedKey, ReadOnlySpan<byte> expectedKey);
+
+	/// <summary>
 	/// Validates a provided key against a stored hash.
 	/// Use this for hashed key storage (recommended for database storage).
 	/// </summary>

@@ -37,6 +37,13 @@ public interface ISignatureValidator {
 	string ComputeBodyHash(byte[] body);
 
 	/// <summary>
+	/// Computes the SHA256 hash of the request body without allocating a byte array.
+	/// </summary>
+	/// <param name="body">The request body bytes as a span.</param>
+	/// <returns>The lowercase hex-encoded SHA256 hash.</returns>
+	string ComputeBodyHash(ReadOnlySpan<byte> body);
+
+	/// <summary>
 	/// Computes the SHA256 hash of an empty body.
 	/// </summary>
 	/// <returns>The lowercase hex-encoded SHA256 hash of an empty string.</returns>
