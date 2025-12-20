@@ -16,9 +16,9 @@ public sealed record SignedRequestClient {
 	public required string ClientName { get; init; }
 
 	/// <summary>
-	/// Gets the authentication scheme used (e.g., "SignedRequest").
+	/// Gets the authentication scheme used (see <see cref="SignedRequestDefaults.AuthenticationScheme"/>).
 	/// </summary>
-	public required string Scheme { get; init; }
+	public string Scheme { get; } = SignedRequestDefaults.AuthenticationScheme;
 
 	/// <summary>
 	/// Gets the roles assigned to this client.

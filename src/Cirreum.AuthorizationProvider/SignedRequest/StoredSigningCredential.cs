@@ -94,12 +94,10 @@ public sealed record StoredSigningCredential {
 	/// <summary>
 	/// Converts this stored credential to a <see cref="SignedRequestClient"/> for authentication.
 	/// </summary>
-	/// <param name="scheme">The authentication scheme name.</param>
 	/// <returns>A signed request client with the credential's properties.</returns>
-	public SignedRequestClient ToClient(string scheme = "SignedRequest") => new() {
+	public SignedRequestClient ToClient() => new() {
 		ClientId = this.ClientId,
 		ClientName = this.ClientName,
-		Scheme = scheme,
 		Roles = this.Roles,
 		Claims = this.Claims,
 		CredentialId = this.CredentialId
