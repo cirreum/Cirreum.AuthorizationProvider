@@ -53,6 +53,14 @@ Bank-grade HMAC signature authentication for high-security scenarios:
 - **Constant-time comparison** - Prevents timing attacks on signature validation
 - **Allocation-free validation** - `Span<byte>` overloads for high-performance body hashing
 
+#### 👤 Role Enrichment Contract
+Resolve application roles for authenticated users from your data store:
+
+- **`IRoleResolver` interface** - Implement to load roles by external user ID (`oid`, `sub`, `user_id`)
+- **Per-request caching** - Resolver called at most once per HTTP request
+- **Automatic skip** - Users with existing role claims (e.g., workforce tokens) bypass resolution
+- **Registration** - Wire up via `CirreumAuthorizationBuilder.AddRoleResolver<T>()` in the Runtime layer
+
 #### ⚙️ Configuration Abstractions
 Flexible configuration models that support provider-specific settings while maintaining consistency:
 
@@ -161,6 +169,13 @@ AuthorizationProviderInstanceSettings (Base)
 │
 └── HeaderAuthorizationProviderInstanceSettings
     └── HeaderName, ClientId, ClientName, Roles
+
+Role Enrichment
+├── IRoleResolver - Contract for resolving application roles from your data store
+├── AuthorizationDiagnostics - Diagnostic name constant for telemetry
+└── Implementation lives in Cirreum.Runtime.AuthorizationProvider
+    ├── AudienceProviderRoleClaimsTransformer - IClaimsTransformation
+    └── Registered via CirreumAuthorizationBuilder.AddRoleResolver<T>()
 
 Dynamic Resolution (Database-backed)
 ├── ApiKey/

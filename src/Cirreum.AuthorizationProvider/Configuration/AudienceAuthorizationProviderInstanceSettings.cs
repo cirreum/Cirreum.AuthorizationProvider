@@ -5,8 +5,7 @@ namespace Cirreum.AuthorizationProvider.Configuration;
 /// Used by providers that route authentication based on JWT audience claims (e.g., Entra, Okta, Ping).
 /// </summary>
 public abstract class AudienceAuthorizationProviderInstanceSettings
-	: AuthorizationProviderInstanceSettings
-{
+	: AuthorizationProviderInstanceSettings {
 	/// <summary>
 	/// Gets or sets the JWT audience claim value for this provider instance.
 	/// This value is used to map incoming JWT tokens to the appropriate authentication scheme.

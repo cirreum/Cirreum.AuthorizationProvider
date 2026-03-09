@@ -5,8 +5,7 @@ namespace Cirreum.AuthorizationProvider.Configuration;
 /// Used by providers that route authentication based on HTTP headers (e.g., API keys).
 /// </summary>
 public abstract class HeaderAuthorizationProviderInstanceSettings
-	: AuthorizationProviderInstanceSettings
-{
+	: AuthorizationProviderInstanceSettings {
 	/// <summary>
 	/// Gets or sets the HTTP header name where the credential is expected.
 	/// Defaults to "X-Api-Key".

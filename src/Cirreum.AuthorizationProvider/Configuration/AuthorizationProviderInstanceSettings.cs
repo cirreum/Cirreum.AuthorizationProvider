@@ -8,8 +8,7 @@ using Microsoft.Extensions.Configuration;
 /// common configuration properties for all authorization provider instances.
 /// </summary>
 public abstract class AuthorizationProviderInstanceSettings
-	: IProviderInstanceSettings
-{
+	: IProviderInstanceSettings {
 	/// <summary>
 	/// Gets or sets the authentication scheme name for this provider instance.
 	/// This value is typically set during registration and maps to an ASP.NET Core authentication scheme.
