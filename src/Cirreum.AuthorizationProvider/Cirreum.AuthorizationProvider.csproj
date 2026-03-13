@@ -10,7 +10,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Cirreum.Providers" Version="1.0.109" />
+		<PackageReference Include="Cirreum.Providers" Version="1.0.110" />
 	</ItemGroup>
 
 	<ItemGroup>
