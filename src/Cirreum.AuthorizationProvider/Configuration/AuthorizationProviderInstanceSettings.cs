@@ -10,9 +10,27 @@ using Microsoft.Extensions.Configuration;
 public abstract class AuthorizationProviderInstanceSettings
 	: IProviderInstanceSettings {
 	/// <summary>
-	/// Gets or sets the authentication scheme name for this provider instance.
-	/// This value is typically set during registration and maps to an ASP.NET Core authentication scheme.
+	/// Gets the ASP.NET Core authentication scheme name for this provider instance.
 	/// </summary>
+	/// <remarks>
+	/// <para>
+	/// <strong>This value is auto-populated from the instance key</strong> during provider
+	/// registration (see <see cref="AuthorizationProviderRegistrar{TSettings, TInstanceSettings}.RegisterInstance"/>).
+	/// The instance key under <c>Instances:</c> in <c>appsettings.json</c> serves double duty
+	/// as both the logical instance name and the ASP.NET Core authentication scheme name.
+	/// </para>
+	/// <para>
+	/// Do <strong>not</strong> set <c>Scheme</c> in configuration. If a mismatched value is
+	/// detected during registration, an <see cref="InvalidOperationException"/> is thrown.
+	/// </para>
+	/// <example>
+	/// <code>
+	/// // appsettings.json
+	/// //   "Oidc": { "Instances": { "descope": { ... } } }
+	/// //                           ^^^^^^^^ — this key becomes the scheme name
+	/// </code>
+	/// </example>
+	/// </remarks>
 	public string Scheme { get; set; } = "";
 
 	/// <summary>

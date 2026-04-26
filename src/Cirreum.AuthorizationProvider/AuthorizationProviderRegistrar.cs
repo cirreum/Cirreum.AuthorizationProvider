@@ -48,6 +48,7 @@ public abstract class AuthorizationProviderRegistrar<TSettings, TInstanceSetting
 		IServiceCollection services,
 		IConfiguration configuration,
 		AuthenticationBuilder authBuilder) {
+
 		if (providerSettings is null || providerSettings.Instances.Count == 0) {
 			return;
 		}
@@ -85,6 +86,16 @@ public abstract class AuthorizationProviderRegistrar<TSettings, TInstanceSetting
 		// Must have settings
 		if (settings is null) {
 			throw new InvalidOperationException($"Missing required settings for the service '{key}'");
+		}
+
+		// The ASP.NET Core authentication scheme name is always derived from the instance key.
+		// If a user explicitly set Scheme in configuration to a different value, fail loudly
+		// rather than silently overwriting it — that would be a surprising footgun.
+		if (!string.IsNullOrWhiteSpace(settings.Scheme) && settings.Scheme != key) {
+			throw new InvalidOperationException(
+				$"Provider instance '{key}' has Scheme='{settings.Scheme}' configured, but the " +
+				$"scheme name is auto-derived from the instance key. Remove the 'Scheme' value " +
+				$"from configuration — the instance key IS the scheme name.");
 		}
 
 		// Map the key to the scheme name

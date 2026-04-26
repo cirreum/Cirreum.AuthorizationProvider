@@ -194,6 +194,45 @@ Dynamic Resolution (Database-backed)
     └── ISignatureValidationEvents - Rate limiting hooks
 ```
 
+### Instance key and scheme name
+
+The instance key under `Instances:` in `appsettings.json` serves double duty: it is both the
+**logical instance name** (used for configuration, logging, and error messages) and the
+**ASP.NET Core authentication scheme name** (used to register schemes with the
+`AuthenticationBuilder` and to route incoming requests).
+
+```json
+{
+  "Cirreum": {
+    "Authorization": {
+      "Providers": {
+        "Oidc": {
+          "Instances": {
+            "descope": {          // ← this key becomes Scheme = "descope"
+              "Authority": "...",
+              "Audience": "..."
+            },
+            "auth0": {            // ← this key becomes Scheme = "auth0"
+              "Authority": "...",
+              "Audience": "..."
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+This convention keeps the config DRY (no duplication between the instance name and a
+separate `Scheme` value) and guarantees scheme-name uniqueness by construction — JSON object
+keys can't collide.
+
+> **Do not set `Scheme` in configuration.** The `AuthorizationProviderInstanceSettings.Scheme`
+> property is auto-populated from the instance key during `RegisterInstance`. If a mismatched
+> value is detected in configuration, registration fails with an `InvalidOperationException`
+> rather than silently overwriting the configured value.
+
 ### Installation
 ```bash
 dotnet add package Cirreum.AuthorizationProvider
